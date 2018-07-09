@@ -128,7 +128,7 @@ def client_handler(websocket, path):
         # probably a better way to handle disconnections, but this works
         except websockets.exceptions.ConnectionClosed:
             part_message = {
-                "message": channel_list[connect_message["channel"]][websocket] + " has left.",
+                "message": channel_list[connect_message["channel"]][connect_message["user"]] + " has left.",
                 "timestamp": connect_message["timestamp"],
                 "user": "System",
                 "channel": connect_message["channel"],
