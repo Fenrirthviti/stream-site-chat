@@ -65,7 +65,7 @@ def client_handler(websocket, path):
     # check to see if maximum session limit has been reached
     if len(channel_list[connect_message["channel"]][connect_message["user"]]) > session_limit:
         if debug:
-            print('Max connection limit reached!')
+            print('Maximum connection limit reached!')
         maxlimit_message = {
             "message": "Maximum connection limit reached!",
             "timestamp": connect_message["timestamp"],
@@ -100,6 +100,8 @@ def client_handler(websocket, path):
             if debug:
                 print('user (connect_message): ', user)
             for socket in channel_list[connect_message["channel"]][user]:
+                if debug:
+                    print('socket: ', socket)
                 yield from socket.send(json.dumps(connect_message))
 
         # wait for messages
@@ -128,7 +130,7 @@ def client_handler(websocket, path):
         # probably a better way to handle disconnections, but this works
         except websockets.exceptions.ConnectionClosed:
             part_message = {
-                "message": channel_list[connect_message["channel"]][connect_message["user"]] + " has left.",
+                "message": connect_message["user"] + " has left.",
                 "timestamp": connect_message["timestamp"],
                 "user": "System",
                 "channel": connect_message["channel"],
