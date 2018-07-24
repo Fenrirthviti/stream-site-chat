@@ -6,8 +6,7 @@ import pathlib
 import bleach
 from bleach.linkifier import Linker
 
-# todo: Prevent users from joining the same channel more than X times
-# todo: Add list of users somewhere on the page
+# todo: Add list of users somewhere on the page (partially complete)
 # todo: Prevent sending messages that are empty
 # todo: Allow chat to be popped out
 
@@ -15,7 +14,7 @@ from bleach.linkifier import Linker
 channel_list = {}  # written automatically in the format of {channel: {user: websocket(s)}}
 debug = True
 session_limit = 3
-log_file = '' # path to log files location
+log_file = ''  # path to log files location
 
 
 # bleach.linkify callback to add _blank target
@@ -23,10 +22,29 @@ def target_blank(attrs, new=False):
     attrs[(None, u'target')] = u'_blank'
     return attrs
 
+
 def log(message):
-    file = open(log_file + 'server.log', 'a')
+    file = open(log_file + 'chat-server.log', 'a')
     file.write(message)
     file.close()
+
+
+def user_sync(connect_message):
+    users_list = []
+    for user in channel_list[connect_message["channel"]]:
+        users_list.append(user)
+    if debug:
+        print('users_list (user_sync): ', users_list)
+    user_sync_message = {
+        "message": users_list,
+        "timestamp": connect_message["timestamp"],
+        "user": "System",
+        "channel": connect_message["channel"],
+        "channel_name": connect_message["channel_name"],
+        "type": "USER_SYNC"
+    }
+    return user_sync_message
+
 
 @asyncio.coroutine
 def client_handler(websocket, path):
@@ -36,10 +54,8 @@ def client_handler(websocket, path):
 
     if debug:
         print('New client: ', websocket, ' (', connect_message["user"], ')')
-    log('New client: ' + str(websocket) + '(' + connect_message["user"] + ')\n')
-
-    if debug:
         print('connect_message: ', connect_message)
+    log('New client: ' + str(websocket) + '(' + connect_message["user"] + ')\n')
 
     welcome_message = {
         "message": "Welcome to " + connect_message["channel_name"] + ".",
@@ -81,6 +97,8 @@ def client_handler(websocket, path):
 
     else:
         user_count = len(channel_list[connect_message["channel"]]) - 1
+        user_sync_message = user_sync(connect_message)
+
         join_message = {
             "message": "There are " + str(user_count) + " other users connected.",
             "timestamp": connect_message["timestamp"],
@@ -103,6 +121,7 @@ def client_handler(websocket, path):
                 if debug:
                     print('socket: ', socket)
                 yield from socket.send(json.dumps(connect_message))
+                yield from socket.send(json.dumps(user_sync_message))
 
         # wait for messages
         try:
@@ -137,15 +156,25 @@ def client_handler(websocket, path):
                 "channel_name": connect_message["channel_name"],
                 "type": "SYSTEM"
             }
+
             channel_list[connect_message["channel"]][connect_message["user"]].remove(websocket)
+
+            # remove the user from the list if they have no socket connections open
+            if len(channel_list[connect_message["channel"]][connect_message["user"]]) == 0:
+                del channel_list[connect_message["channel"]][connect_message["user"]]
+
+            user_sync_message = user_sync(connect_message)
+
             if debug:
                 print('Client closed connection', websocket)
             log('Client closed connection: ' + str(websocket) + '\n')
+
             for user in channel_list[connect_message["channel"]]:
                 if debug:
                     print('user (disconnect): ', user)
                 for socket in channel_list[connect_message["channel"]][user]:
                     yield from socket.send(json.dumps(part_message))
+                    yield from socket.send(json.dumps(user_sync_message))
 
 
 if __name__ == "__main__":
