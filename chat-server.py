@@ -128,6 +128,11 @@ def client_handler(websocket, path):
             while True:
                 message_data = yield from websocket.recv()
                 message_json = json.loads(message_data)
+                if len(message_json['message'].strip()) is 0:
+                    if debug:
+                        print('Blank message detected! Not sent to clients.')
+                    continue
+
 
                 # set up callback for _blank target
                 linker = Linker(callbacks=[target_blank])
