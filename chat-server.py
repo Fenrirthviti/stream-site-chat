@@ -7,7 +7,6 @@ import bleach
 from bleach.linkifier import Linker
 
 # todo: Add list of users somewhere on the page (partially complete)
-# todo: Prevent sending messages that are empty
 # todo: Allow chat to be popped out
 
 # config params
@@ -18,7 +17,7 @@ log_file = ''  # path to log files location
 
 
 # bleach.linkify callback to add _blank target
-def target_blank(attrs, new=False):
+def target_blank(attrs):
     attrs[(None, u'target')] = u'_blank'
     return attrs
 
@@ -133,7 +132,6 @@ def client_handler(websocket, path):
                         print('Blank message detected! Not sent to clients.')
                     continue
 
-
                 # set up callback for _blank target
                 linker = Linker(callbacks=[target_blank])
 
@@ -185,15 +183,14 @@ def client_handler(websocket, path):
 if __name__ == "__main__":
     LISTEN_ADDRESS = ('0.0.0.0', 9090,)
 
+    # for ssl
     # open cert file if using wss
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(pathlib.Path(__file__).with_name('certfile.pem'))
-
-    # for ssl
     start_server = websockets.serve(client_handler, *LISTEN_ADDRESS, ssl=ssl_context)
 
     # non-ssl
-    #start_server = websockets.serve(client_handler, *LISTEN_ADDRESS)
+    # start_server = websockets.serve(client_handler, *LISTEN_ADDRESS)
 
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
